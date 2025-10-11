@@ -5,6 +5,7 @@
 
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
+#include "PhysicsEngine/PhysicsHandleComponent.h"
 
 // Sets default values for this component's properties
 UGrabber::UGrabber()
@@ -22,8 +23,18 @@ void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
-	
+	UPhysicsHandleComponent* PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
+
+	if (PhysicsHandle != nullptr)
+	{
+		FString PhysicsHandleName = PhysicsHandle->GetName();
+		UE_LOG(LogTemp, Display, TEXT("Physics Handle: %s"), *PhysicsHandleName);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Physics Handle found"));
+	}
+
 }
 
 
@@ -31,18 +42,18 @@ void UGrabber::BeginPlay()
 void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
 
-	FRotator Rotation = GetComponentRotation();
-	//UE_LOG(LogTemp, Display, TEXT("Rotation: %s"), *Rotation.ToCompactString());
-	
+void UGrabber::Grab()
+{
 	UWorld* World = GetWorld();
 	double Time = World->TimeSeconds;
-	//UE_LOG(LogTemp, Display, TEXT("%lf"), Time);
 
 	FVector Start = GetComponentLocation();
 	FVector End = Start + GetForwardVector() * MaxGrabDistance;
 
 	DrawDebugLine(World, Start, End, FColor::Red);
+	DrawDebugSphere(World, End, 10, 10, FColor::Blue, false, 5);
 
 	FHitResult HitResult;
 	FCollisionShape Sphere = FCollisionShape::MakeSphere(GrabRadius);
@@ -54,15 +65,26 @@ void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 	);
 
 	// Print the hit actor name
-	if (HasHit) {
+	if (HasHit) 
+	{
+		DrawDebugSphere(World, HitResult.Location, 10, 10, FColor::Green, false, 5);
+		DrawDebugSphere(World, HitResult.ImpactPoint, 10, 10, FColor::Red, false, 5);
+
 		AActor* HitActor = HitResult.GetActor();
 		FString HitActorName = HitActor->GetActorNameOrLabel();
 
-		UE_LOG(LogTemp, Display, TEXT("Hit: %s"), *HitActorName);
+		UE_LOG(LogTemp, Display, TEXT("Hit actor: %s"), *HitActorName);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Hit actor: ") + HitActorName);
 	}
-	else {
-		UE_LOG(LogTemp, Display, TEXT("Hit: False"));
+	else 
+	{
+		UE_LOG(LogTemp, Display, TEXT("No actor hit"));
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No actor hit"));
 	}
-
 }
 
+void UGrabber::Release() 
+{
+	UE_LOG(LogTemp, Display, TEXT("Released grabber"));
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Released grabber"));
+}
