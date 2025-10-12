@@ -5,7 +5,6 @@
 
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
-#include "PhysicsEngine/PhysicsHandleComponent.h"
 
 // Sets default values for this component's properties
 UGrabber::UGrabber()
@@ -23,18 +22,7 @@ void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UPhysicsHandleComponent* PhysicsHandle = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
-
-	if (PhysicsHandle != nullptr)
-	{
-		FString PhysicsHandleName = PhysicsHandle->GetName();
-		UE_LOG(LogTemp, Display, TEXT("Physics Handle: %s"), *PhysicsHandleName);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("No Physics Handle found"));
-	}
-
+	// ...
 }
 
 
@@ -42,49 +30,87 @@ void UGrabber::BeginPlay()
 void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	if (PhysicsHandle == nullptr)
+	{
+		return;
+	}
+
+	if (PhysicsHandle->GetGrabbedComponent() != nullptr)
+	{
+		FVector TargetLocation = GetComponentLocation() + GetForwardVector() * HoldDistance;
+		PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, GetComponentRotation());
+	}
+
 }
 
 void UGrabber::Grab()
 {
-	UWorld* World = GetWorld();
-	double Time = World->TimeSeconds;
-
-	FVector Start = GetComponentLocation();
-	FVector End = Start + GetForwardVector() * MaxGrabDistance;
-
-	DrawDebugLine(World, Start, End, FColor::Red);
-	DrawDebugSphere(World, End, 10, 10, FColor::Blue, false, 5);
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	if (PhysicsHandle == nullptr)
+	{
+		return;
+	}
 
 	FHitResult HitResult;
-	FCollisionShape Sphere = FCollisionShape::MakeSphere(GrabRadius);
-	bool HasHit = World->SweepSingleByChannel(HitResult, 
-		Start, End, 
-		FQuat::Identity, 
-		ECC_GameTraceChannel2,
-		Sphere
-	);
+	bool HasHit = GetGrabbableInReach(HitResult);
 
-	// Print the hit actor name
-	if (HasHit) 
+	if (HasHit)
 	{
-		DrawDebugSphere(World, HitResult.Location, 10, 10, FColor::Green, false, 5);
-		DrawDebugSphere(World, HitResult.ImpactPoint, 10, 10, FColor::Red, false, 5);
+		UPrimitiveComponent* HitComponent = HitResult.GetComponent();
+		HitComponent->SetSimulatePhysics(true);
+;		HitComponent->WakeAllRigidBodies();
 
 		AActor* HitActor = HitResult.GetActor();
-		FString HitActorName = HitActor->GetActorNameOrLabel();
+		HitActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-		UE_LOG(LogTemp, Display, TEXT("Hit actor: %s"), *HitActorName);
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Hit actor: ") + HitActorName);
-	}
-	else 
-	{
-		UE_LOG(LogTemp, Display, TEXT("No actor hit"));
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No actor hit"));
+		PhysicsHandle->GrabComponentAtLocationWithRotation(
+			HitResult.GetComponent(),
+			NAME_None,
+			HitResult.ImpactPoint,
+			GetComponentRotation()
+		);
 	}
 }
 
-void UGrabber::Release() 
+void UGrabber::Release()
 {
-	UE_LOG(LogTemp, Display, TEXT("Released grabber"));
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Released grabber"));
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+
+	if (PhysicsHandle == nullptr)
+	{
+		return;
+	}
+
+	if (PhysicsHandle->GetGrabbedComponent() != nullptr) 
+	{
+		PhysicsHandle->ReleaseComponent();
+	}
+}
+
+UPhysicsHandleComponent* UGrabber::GetPhysicsHandle() const
+{
+	UPhysicsHandleComponent* Result = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
+	if (Result == nullptr)
+	{
+		UE_LOG(LogTemp, Display, TEXT("Grabber requires a UPhysicsHandleComponent"));
+	}
+	
+	return Result;
+}
+
+bool UGrabber::GetGrabbableInReach(FHitResult& HitResult)
+{
+	UWorld* World = GetWorld();
+	FVector Start = GetComponentLocation();
+	FVector End = Start + GetForwardVector() * MaxGrabDistance;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(GrabRadius);
+
+	return World->SweepSingleByChannel(HitResult,
+		Start, End,
+		FQuat::Identity,
+		ECC_GameTraceChannel2,
+		Sphere
+	);
 }
