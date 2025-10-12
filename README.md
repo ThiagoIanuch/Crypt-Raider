@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/674c5987-0868-4aa6-814c-ab667719e249
 ![Unreal Engine](https://img.shields.io/badge/Unreal%20Engine%205-%23313131.svg?style=for-the-badge&logo=unrealengine&logoColor=white) ![C++](https://img.shields.io/badge/C++-%235C2D91.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white) ![Blueprints](https://img.shields.io/badge/Blueprints-blue?style=for-the-badge&logo=unrealengine&logoColor=white)
 
 ## How to download and play
-1. Download the game on my <a href="https://thiagoianuch.itch.io/obstacle-assault">itch.io</a> **(Windows only)**
+1. Download the game on my <a href="https://thiagoianuch.itch.io/crypt-raider">itch.io</a> **(Windows only)**
 
 <div align="center">
     <a href="https://thiagoianuch.itch.io/crypt-raider">
